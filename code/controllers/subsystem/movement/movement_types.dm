@@ -21,12 +21,12 @@
 	var/delay = 1
 	///The next time we should process
 	///Used primarially as a hint to be reasoned about by our [controller], and as the id of our bucket
-	///Should not be modified directly outside of [start_loop]
 	var/timer = 0
-	///Is this loop running or not
-	var/running = FALSE
-	///Track if we're currently paused
-	var/paused = FALSE
+	///The time we are CURRENTLY queued for processing
+	///Do not modify this directly
+	var/queued_time = -1
+	/// Status bitfield for what state the move loop is currently in
+	var/status = NONE
 
 /datum/move_loop/New(datum/movement_packet/owner, datum/controller/subsystem/movement/controller, atom/moving, priority, flags, datum/extra_info)
 	src.owner = owner
@@ -57,7 +57,7 @@
 /datum/move_loop/proc/loop_started()
 	SHOULD_CALL_PARENT(TRUE)
 	SEND_SIGNAL(src, COMSIG_MOVELOOP_START)
-	running = TRUE
+	status |= MOVELOOP_STATUS_RUNNING
 	//If this is our first time starting to move with this loop
 	//And we're meant to start instantly
 	if(!timer && flags & MOVEMENT_LOOP_START_FAST)
@@ -68,7 +68,7 @@
 ///Called when a loop is stopped, doesn't stop the loop itself
 /datum/move_loop/proc/loop_stopped()
 	SHOULD_CALL_PARENT(TRUE)
-	running = FALSE
+	status &= ~MOVELOOP_STATUS_RUNNING
 	SEND_SIGNAL(src, COMSIG_MOVELOOP_STOP)
 
 /datum/move_loop/proc/info_deleted(datum/source)
@@ -91,7 +91,7 @@
 ///Pauses the move loop for some passed in period
 ///This functionally means shifting its timer up, and clearing it from its current bucket
 /datum/move_loop/proc/pause_for(time)
-	if(!controller || !running) //No controller or not running? go away
+	if(!controller || !(status & MOVELOOP_STATUS_RUNNING)) //No controller or not running? go away
 		return
 	//Dequeue us from our current bucket
 	controller.dequeue_loop(src)
@@ -141,21 +141,21 @@
 
 ///Pause our loop untill restarted with resume_loop()
 /datum/move_loop/proc/pause_loop()
-	if(!controller || !running || paused) //we dead
+	if(!controller || !(status & MOVELOOP_STATUS_RUNNING) || (status & MOVELOOP_STATUS_PAUSED)) //we dead
 		return
 
 	//Dequeue us from our current bucket
 	controller.dequeue_loop(src)
-	paused = TRUE
+	status |= MOVELOOP_STATUS_PAUSED
 
 ///Resume our loop after being paused by pause_loop()
 /datum/move_loop/proc/resume_loop()
-	if(!controller || !running || !paused)
+	if(!controller || (status & MOVELOOP_STATUS_RUNNING|MOVELOOP_STATUS_PAUSED) != (MOVELOOP_STATUS_RUNNING|MOVELOOP_STATUS_PAUSED))
 		return
 
-	controller.queue_loop(src)
 	timer = world.time
-	paused = FALSE
+	controller.queue_loop(src)
+	status &= ~MOVELOOP_STATUS_PAUSED
 
 ///Removes the atom from some movement subsystem. Defaults to SSmovement
 /datum/controller/subsystem/move_manager/proc/stop_looping(atom/movable/moving, datum/controller/subsystem/movement/subsystem = SSmovement)
@@ -323,6 +323,7 @@
 	turf/avoid,
 	skip_first,
 	subsystem,
+	diagonal_handling,
 	priority,
 	flags,
 	datum/extra_info,
@@ -343,6 +344,7 @@
 		simulated_only,
 		avoid,
 		skip_first,
+		diagonal_handling,
 		initial_path)
 
 /datum/move_loop/has_target/jps
@@ -360,6 +362,8 @@
 	var/turf/avoid
 	///Should we skip the first step? This is the tile we're currently on, which breaks some things
 	var/skip_first
+	///Whether we replace diagonal movements with cardinal movements or follow through with them
+	var/diagonal_handling
 	///A list for the path we're currently following
 	var/list/movement_path
 	///Cooldown for repathing, prevents spam
@@ -367,13 +371,13 @@
 	///Bool used to determine if we're already making a path in JPS. this prevents us from re-pathing while we're already busy.
 	var/is_pathing = FALSE
 	///Callbacks to invoke once we make a path
-	var/list/datum/callback/on_finish_callbacks
+	var/list/datum/callback/on_finish_callbacks = list()
 
 /datum/move_loop/has_target/jps/New(datum/movement_packet/owner, datum/controller/subsystem/movement/controller, atom/moving, priority, flags, datum/extra_info)
 	. = ..()
 	on_finish_callbacks += CALLBACK(src, PROC_REF(on_finish_pathing))
 
-/datum/move_loop/has_target/jps/setup(delay, timeout, atom/chasing, repath_delay, max_path_length, minimum_distance, list/access, simulated_only, turf/avoid, skip_first, list/initial_path)
+/datum/move_loop/has_target/jps/setup(delay, timeout, atom/chasing, repath_delay, max_path_length, minimum_distance, list/access, simulated_only, turf/avoid, skip_first, diagonal_handling, list/initial_path)
 	. = ..()
 	if(!.)
 		return
@@ -384,6 +388,7 @@
 	src.simulated_only = simulated_only
 	src.avoid = avoid
 	src.skip_first = skip_first
+	src.diagonal_handling = diagonal_handling
 	movement_path = initial_path?.Copy()
 
 /datum/move_loop/has_target/jps/compare_loops(datum/move_loop/loop_type, priority, flags, extra_info, delay, timeout, atom/chasing, repath_delay, max_path_length, minimum_distance, list/access, simulated_only, turf/avoid, skip_first, initial_path)
@@ -410,7 +415,7 @@
 	if(!COOLDOWN_FINISHED(src, repath_cooldown))
 		return
 	COOLDOWN_START(src, repath_cooldown, repath_delay)
-	if(SSpathfinder.pathfind(moving, target, max_path_length, minimum_distance, access, simulated_only, avoid, skip_first, on_finish = on_finish_callbacks))
+	if(SSpathfinder.pathfind(moving, target, max_path_length, minimum_distance, access, simulated_only, avoid, skip_first, diagonal_handling, on_finish = on_finish_callbacks))
 		is_pathing = TRUE
 		SEND_SIGNAL(src, COMSIG_MOVELOOP_JPS_REPATH)
 
@@ -418,6 +423,7 @@
 /datum/move_loop/has_target/jps/proc/on_finish_pathing(list/path)
 	movement_path = path
 	is_pathing = FALSE
+	SEND_SIGNAL(src, COMSIG_MOVELOOP_JPS_FINISHED_PATHING, path)
 
 /datum/move_loop/has_target/jps/move()
 	if(!length(movement_path))
