@@ -2,24 +2,16 @@ import { filterMap } from 'common/collections';
 import { useState } from 'react';
 
 import { useBackend } from '../../backend';
-import {
-  Box,
-  Button,
-  Icon,
-  Popper,
-  Stack,
-  Tooltip,
-  TrackOutsideClicks,
-} from '../../components';
+import { Box, Button, Icon, Popper, Stack, Tooltip } from '../../components';
 import { PreferencesMenuData, Quirk, RandomSetting, ServerData } from './data';
 import { getRandomization, PreferenceList } from './MainPage';
 import { ServerPreferencesFetcher } from './ServerPreferencesFetcher';
 import { useRandomToggleState } from './useRandomToggleState';
 
-function getValueClass(value: number) {
-  if (value > 0) {
+function getColorValueClass(quirk: Quirk) {
+  if (quirk.value > 0) {
     return 'positive';
-  } else if (value < 0) {
+  } else if (quirk.value < 0) {
     return 'negative';
   } else {
     return 'neutral';
@@ -139,7 +131,7 @@ function QuirkDisplay(props: QuirkDisplayProps) {
         >
           <Stack vertical fill>
             <Stack.Item
-              className={`${className}--${getValueClass(value)}`}
+              className={`${className}--${getColorValueClass(quirk)}`}
               style={{
                 borderBottom: '1px solid black',
                 padding: '2px',
@@ -221,67 +213,66 @@ function QuirkPopper(props: QuirkPopperProps) {
   return (
     <Popper
       placement="bottom-end"
+      onClickOutside={() => setCustomizationExpanded(false)}
       isOpen={customizationExpanded}
-      popperContent={
-        <TrackOutsideClicks
-          onOutsideClick={() => setCustomizationExpanded(false)}
-        >
-          <Box>
-            {!!customization_options && hasExpandableCustomization && (
-              <Box
-                mt="1px"
-                style={{
-                  boxShadow: '0px 4px 8px 3px rgba(0, 0, 0, 0.7)',
+      content={
+        <div>
+          {!!customization_options && hasExpandableCustomization && (
+            <Box
+              mt="1px"
+              style={{
+                boxShadow: '0px 4px 8px 3px rgba(0, 0, 0, 0.7)',
+              }}
+            >
+              <Stack
+                onClick={(e) => {
+                  e.stopPropagation();
                 }}
+                maxWidth="400px" // SKYRAT EDIT - maxWidth to 400px from 300px
+                backgroundColor="black"
+                px="5px"
+                py="3px"
               >
-                <Stack
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                  maxWidth="400px" // SKYRAT EDIT - maxWidth to 600px from 300px
-                  backgroundColor="black"
-                  px="5px"
-                  py="3px"
-                >
-                  <Stack.Item>
-                    <PreferenceList
-                      act={act}
-                      preferences={getCorrespondingPreferences(
+                <Stack.Item>
+                  <PreferenceList
+                    act={act}
+                    preferences={getCorrespondingPreferences(
+                      customization_options,
+                      character_preferences.manually_rendered_features,
+                    )}
+                    randomizations={getRandomization(
+                      getCorrespondingPreferences(
                         customization_options,
                         character_preferences.manually_rendered_features,
-                      )}
-                      randomizations={getRandomization(
-                        getCorrespondingPreferences(
-                          customization_options,
-                          character_preferences.manually_rendered_features,
-                        ),
-                        serverData,
-                        randomBodyEnabled,
-                      )}
-                      maxHeight="100px"
-                    />
-                  </Stack.Item>
-                </Stack>
-              </Box>
-            )}
-          </Box>
-        </TrackOutsideClicks>
+                      ),
+                      serverData,
+                      randomBodyEnabled,
+                    )}
+                    maxHeight="100px"
+                  />
+                </Stack.Item>
+              </Stack>
+            </Box>
+          )}
+        </div>
       }
     >
-      {selected && (
-        <Button
-          selected={customizationExpanded}
-          icon="cog"
-          tooltip="Customize"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCustomizationExpanded(!customizationExpanded);
-          }}
-          style={{
-            float: 'right',
-          }}
-        />
-      )}
+      <div>
+        {selected && (
+          <Button
+            selected={customizationExpanded}
+            icon="cog"
+            tooltip="Customize"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCustomizationExpanded(!customizationExpanded);
+            }}
+            style={{
+              float: 'right',
+            }}
+          />
+        )}
+      </div>
     </Popper>
   );
 }
@@ -317,8 +308,8 @@ export function QuirksPage(props) {
   return (
     <ServerPreferencesFetcher
       // SKYRAT EDIT START - Quirks balance refactor
-      render={(quirks_data) => {
-        if (!quirks_data) {
+      render={(server_data) => {
+        if (!server_data) {
           // SKYRAT EDIT END
           return <Box>Loading quirks...</Box>;
         }
@@ -326,10 +317,9 @@ export function QuirksPage(props) {
         const {
           max_positive_quirks: maxPositiveQuirks,
           quirk_blacklist: quirkBlacklist,
-          // BUBBER EDIT ADDITION - Species quirks
-          quirk_species_whitelist: quirkSpeciesWhitelist,
           quirk_info: quirkInfo,
-        } = quirks_data.quirks; // SKYRAT EDIT - Quirks balance refactor
+          points_enabled: pointsEnabled,
+        } = server_data.quirks; // SKYRAT EDIT - Quirks balance refactor
 
         const quirks = Object.entries(quirkInfo);
         quirks.sort(([_, quirkA], [__, quirkB]) => {
@@ -349,9 +339,12 @@ export function QuirksPage(props) {
           const quirk = quirkInfo[quirkName];
 
           if (quirk.value > 0) {
-            if (positiveQuirks >= maxPositiveQuirks) {
+            if (
+              maxPositiveQuirks !== -1 &&
+              positiveQuirks >= maxPositiveQuirks
+            ) {
               return "You can't have any more positive quirks!";
-            } else if (balance + quirk.value > 0) {
+            } else if (pointsEnabled && balance + quirk.value > 0) {
               return 'You need a negative quirk to balance this out!';
             }
           }
@@ -361,7 +354,6 @@ export function QuirksPage(props) {
             return 'You need to be a veteran to select this quirk, apply today!';
           }
           // SKYRAT EDIT END
-
           const selectedQuirkNames = selectedQuirks.map((quirkKey) => {
             return quirkInfo[quirkKey].name;
           });
@@ -382,26 +374,22 @@ export function QuirksPage(props) {
           }
 
           // BUBBER EDIT ADDITION START - Species quirks
-
-          // Iterate through all whitelists
-
-          for (const whitelist of quirkSpeciesWhitelist) {
-            const currentSpeciesName = data.character_preferences.misc.species;
-
-            // Format: Quirk ([0]), Species define ([1])
-            const whitelistSpeciesName = whitelist[1];
-            // Quirk is not in the whitelisted ones, continue to next list
-            if (whitelist.indexOf(quirk.name) === -1) {
-              continue;
+          const currentSpeciesID = data.character_preferences.misc.species;
+          // keys are the species_ids, values are the species names
+          const speciesWhitelistKeys = Object.keys(quirk.species_whitelist);
+          if (
+            speciesWhitelistKeys?.length &&
+            !speciesWhitelistKeys.includes(currentSpeciesID)
+          ) {
+            const speciesWhitelistNames = Object.values(
+              quirk.species_whitelist,
+            );
+            if (speciesWhitelistNames.length === 1) {
+              return `This quirk can only be taken by the ${speciesWhitelistNames[0]} species.`;
             }
-
-            // If the selected species is NOT in the list, do not give the quirk
-            // Otherwise, give the quirk
-            if (whitelist.indexOf(currentSpeciesName) === -1) {
-              return `This quirk can only be taken by ${whitelistSpeciesName}!`;
-            }
+            const speciesList = speciesWhitelistNames.join(', ');
+            return `This quirk can only be taken by the following species: ${speciesList}.`;
           }
-
           // BUBBER EDIT ADDITION END
 
           return undefined;
@@ -410,7 +398,7 @@ export function QuirksPage(props) {
         const getReasonToNotRemove = (quirkName: string) => {
           const quirk = quirkInfo[quirkName];
 
-          if (balance - quirk.value > 0) {
+          if (pointsEnabled && balance - quirk.value > 0) {
             return 'You need to remove a positive quirk first!';
           }
 
@@ -422,13 +410,21 @@ export function QuirksPage(props) {
             <Stack.Item basis="50%">
               <Stack vertical fill align="center">
                 <Stack.Item>
-                  <Box fontSize="1.3em">Positive Quirks</Box>
+                  {maxPositiveQuirks > 0 ? (
+                    <Box fontSize="1.3em">Positive Quirks</Box>
+                  ) : (
+                    <Box mt={pointsEnabled ? 3.4 : 0} />
+                  )}
                 </Stack.Item>
 
                 <Stack.Item>
-                  <StatDisplay>
-                    {positiveQuirks} / {maxPositiveQuirks}
-                  </StatDisplay>
+                  {maxPositiveQuirks > 0 ? (
+                    <StatDisplay>
+                      {positiveQuirks} / {maxPositiveQuirks}
+                    </StatDisplay>
+                  ) : (
+                    <Box mt={pointsEnabled ? 3.4 : 0} />
+                  )}
                 </Stack.Item>
 
                 <Stack.Item>
@@ -462,7 +458,7 @@ export function QuirksPage(props) {
                           },
                         ];
                       })}
-                    serverData={quirks_data} // SKYRAT EDIT CHANGE
+                    serverData={server_data} // SKYRAT EDIT CHANGE
                     randomBodyEnabled={randomBodyEnabled}
                   />
                 </Stack.Item>
@@ -476,11 +472,19 @@ export function QuirksPage(props) {
             <Stack.Item basis="50%">
               <Stack vertical fill align="center">
                 <Stack.Item>
-                  <Box fontSize="1.3em">Quirk Balance</Box>
+                  {pointsEnabled ? (
+                    <Box fontSize="1.3em">Quirk Balance</Box>
+                  ) : (
+                    <Box mt={maxPositiveQuirks > 0 ? 3.4 : 0} />
+                  )}
                 </Stack.Item>
 
                 <Stack.Item>
-                  <StatDisplay>{balance}</StatDisplay>
+                  {pointsEnabled ? (
+                    <StatDisplay>{balance}</StatDisplay>
+                  ) : (
+                    <Box mt={maxPositiveQuirks > 0 ? 3.4 : 0} />
+                  )}
                 </Stack.Item>
 
                 <Stack.Item>
@@ -518,7 +522,7 @@ export function QuirksPage(props) {
                           },
                         ];
                       })}
-                    serverData={quirks_data} // sKYRAT EDIT CHANGE
+                    serverData={server_data} // sKYRAT EDIT CHANGE
                     randomBodyEnabled={randomBodyEnabled}
                   />
                 </Stack.Item>
