@@ -68,7 +68,7 @@
 
 /obj/attack_alien(mob/living/carbon/alien/adult/user, list/modifiers)
 	if(attack_generic(user, 60, BRUTE, MELEE, 0))
-		playsound(src.loc, 'sound/weapons/slash.ogg', 100, TRUE)
+		playsound(src.loc, 'sound/items/weapons/slash.ogg', 100, TRUE)
 
 /obj/attack_animal(mob/living/simple_animal/user, list/modifiers)
 	. = ..()
@@ -96,7 +96,7 @@
 
 /obj/proc/collision_damage(atom/movable/pusher, force = MOVE_FORCE_DEFAULT, direction)
 	var/amt = max(0, ((force - (move_resist * MOVE_FORCE_CRUSH_RATIO)) / (move_resist * MOVE_FORCE_CRUSH_RATIO)) * 10)
-	take_damage(amt, BRUTE)
+	take_damage(amt, BRUTE, attack_dir = REVERSE_DIR(direction))
 
 /obj/singularity_act()
 	SSexplosions.high_mov_atom += src
@@ -133,6 +133,7 @@
 		take_damage(clamp(0.02 * exposed_temperature, 0, 20), BURN, FIRE, 0)
 	if(!(resistance_flags & ON_FIRE) && (resistance_flags & FLAMMABLE) && !(resistance_flags & FIRE_PROOF))
 		AddComponent(/datum/component/burning, custom_fire_overlay || GLOB.fire_overlay, burning_particles)
+		SEND_SIGNAL(src, COMSIG_ATOM_FIRE_ACT, exposed_temperature, exposed_volume)
 		return TRUE
 	return ..()
 
@@ -169,9 +170,9 @@
 
 /**
  * The interminate proc between deconstruct() & atom_deconstruct(). By default this delegates deconstruction to
- * atom_deconstruct if NO_DECONSTRUCTION is absent but subtypes can override this to handle NO_DECONSTRUCTION in their
+ * atom_deconstruct if NO_DEBRIS_AFTER_DECONSTRUCTION is absent but subtypes can override this to handle NO_DEBRIS_AFTER_DECONSTRUCTION in their
  * own unique way. Override this if for example you want to dump out important content like mobs from the
- * atom before deconstruction regardless if NO_DECONSTRUCTION is present or not
+ * atom before deconstruction regardless if NO_DEBRIS_AFTER_DECONSTRUCTION is present or not
  * Arguments
  *
  * * disassembled - TRUE means we cleanly took this atom apart using tools. FALSE means this was destroyed in a violent way
@@ -179,7 +180,7 @@
 /obj/proc/handle_deconstruct(disassembled = TRUE)
 	SHOULD_CALL_PARENT(FALSE)
 
-	if(!(obj_flags & NO_DECONSTRUCTION))
+	if(!(obj_flags & NO_DEBRIS_AFTER_DECONSTRUCTION))
 		atom_deconstruct(disassembled)
 
 /**

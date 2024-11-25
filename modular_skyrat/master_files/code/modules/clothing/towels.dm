@@ -236,17 +236,12 @@
 	return SECONDARY_ATTACK_CANCEL_ATTACK_CHAIN
 
 
-/obj/item/towel/AltClick(mob/user)
-	. = ..()
-
-	if(. == FALSE)
-		return
-
+/obj/item/towel/click_alt(mob/user)
 	if(!(shape == TOWEL_FULL || shape == TOWEL_WAIST))
-		return FALSE
+		return CLICK_ACTION_BLOCKING
 
 	if(!ishuman(user))
-		return FALSE
+		return CLICK_ACTION_BLOCKING
 
 	var/mob/living/carbon/human/towel_user = user
 	var/worn = towel_user.wear_suit == src
@@ -255,17 +250,13 @@
 
 	// No need to display the different message if they're not wearing it.
 	if(!worn)
-		return
+		return CLICK_ACTION_SUCCESS
 
 	to_chat(user, span_notice(shape == TOWEL_FULL ? "You raise \the [src] over your [shape]." : "You lower \the [src] down to your [shape]."))
+	return CLICK_ACTION_SUCCESS
 
 
-/obj/item/towel/CtrlClick(mob/user)
-	. = ..()
-
-	if(. == FALSE)
-		return
-
+/obj/item/towel/item_ctrl_click(mob/user)
 	if(!wet && shape == TOWEL_FOLDED) // You can't fold a wet towel, so you can't get a folded towel that's also wet. And you can't fold what's already folded, obviously.
 		to_chat(user, span_warning("You can't fold a towel that's already folded!"))
 		return

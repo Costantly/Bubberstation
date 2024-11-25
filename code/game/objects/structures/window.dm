@@ -28,13 +28,15 @@
 	var/glass_amount = 1
 	var/real_explosion_block //ignore this, just use explosion_block
 	var/break_sound = SFX_SHATTER
-	var/knock_sound = 'sound/effects/glassknock.ogg'
-	var/bash_sound = 'sound/effects/glassbash.ogg'
-	var/hit_sound = 'sound/effects/glasshit.ogg'
+	var/knock_sound = 'sound/effects/glass/glassknock.ogg'
+	var/bash_sound = 'sound/effects/glass/glassbash.ogg'
+	var/hit_sound = 'sound/effects/glass/glasshit.ogg'
 	/// If some inconsiderate jerk has had their blood spilled on this window, thus making it cleanable
 	var/bloodied = FALSE
 	///Datum that the shard and debris type is pulled from for when the glass is broken.
 	var/datum/material/glass_material_datum = /datum/material/glass
+	/// Whether or not we're disappearing but dramatically
+	var/dramatically_disappearing = FALSE
 
 /datum/armor/structure_window
 	melee = 50
@@ -188,7 +190,7 @@
 		return
 	return ..()
 
-/obj/structure/window/item_interaction(mob/living/user, obj/item/tool, list/modifiers, is_right_clicking)
+/obj/structure/window/tool_act(mob/living/user, obj/item/tool, list/modifiers)
 	if(!can_be_reached(user))
 		return ITEM_INTERACT_SKIP_TO_ATTACK // Guess you get to hit it
 	add_fingerprint(user)
@@ -277,8 +279,6 @@
 	add_fingerprint(user)
 	return ..()
 
-/obj/structure/window/AltClick(mob/user)
-	return ..() // This hotkey is BLACKLISTED since it's used by /datum/component/simple_rotation
 
 /obj/structure/window/set_anchored(anchorvalue)
 	..()
@@ -321,9 +321,9 @@
 			if(damage_amount)
 				playsound(src, hit_sound, 75, TRUE)
 			else
-				playsound(src, 'sound/weapons/tap.ogg', 50, TRUE)
+				playsound(src, 'sound/items/weapons/tap.ogg', 50, TRUE)
 		if(BURN)
-			playsound(src, 'sound/items/welder.ogg', 100, TRUE)
+			playsound(src, 'sound/items/tools/welder.ogg', 100, TRUE)
 
 
 /obj/structure/window/atom_deconstruct(disassembled = TRUE)
@@ -395,7 +395,7 @@
 //This proc is used to update the icons of nearby windows.
 /obj/structure/window/proc/update_nearby_icons()
 	update_appearance()
-	if(smoothing_flags & (SMOOTH_CORNERS|SMOOTH_BITMASK))
+	if(smoothing_flags & USES_SMOOTHING)
 		QUEUE_SMOOTH_NEIGHBORS(src)
 
 //merges adjacent full-tile windows into one
@@ -404,7 +404,7 @@
 	if(QDELETED(src) || !fulltile)
 		return
 
-	if((updates & UPDATE_SMOOTHING) && (smoothing_flags & (SMOOTH_CORNERS|SMOOTH_BITMASK)))
+	if((updates & UPDATE_SMOOTHING) && (smoothing_flags & USES_SMOOTHING))
 		QUEUE_SMOOTH(src)
 
 	var/ratio = atom_integrity / max_integrity
@@ -429,6 +429,37 @@
 		return FALSE
 
 	return TRUE
+
+/obj/structure/window/proc/temporary_shatter(time_to_go = 1 SECONDS, time_to_return = 4 SECONDS, take_grill = TRUE)
+	if(dramatically_disappearing)
+		return
+
+	// do a cute breaking animation
+	var/static/time_interval = 2 DECISECONDS //per how many steps should we do damage?
+	for(var/damage_step in 1 to (floor(time_to_go / time_interval) - 1)) //10 ds / 2 ds = 5 damage steps, minus 1 so we dont actually break it
+		// slowly drain our total health for the illusion of shattering
+		addtimer(CALLBACK(src, TYPE_PROC_REF(/atom, take_damage), floor(atom_integrity / (time_to_go / time_interval))), time_interval * damage_step)
+
+	//dissapear in 1 second
+	dramatically_disappearing = TRUE
+	addtimer(CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(playsound), loc, break_sound, 70, TRUE), time_to_go) //SHATTER SOUND
+	addtimer(CALLBACK(src, TYPE_PROC_REF(/atom/movable, moveToNullspace)), time_to_go) //woosh
+
+	// come back in 1 + 4 seconds
+	addtimer(VARSET_CALLBACK(src, atom_integrity, atom_integrity), time_to_go + time_to_return) //set the health back (icon is updated on move)
+	addtimer(CALLBACK(src, TYPE_PROC_REF(/atom/movable, forceMove), loc), time_to_go + time_to_return) //we back boys
+	addtimer(VARSET_CALLBACK(src, dramatically_disappearing, FALSE), time_to_go + time_to_return) //also set the var back
+	addtimer(CALLBACK(src, TYPE_PROC_REF(/atom, update_appearance)), time_to_go + time_to_return)
+	addtimer(CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(playsound), get_turf(src), 'sound/effects/glass/glass_reverse.ogg', 70, TRUE), time_to_go + time_to_return)
+
+	var/obj/structure/grille/grill = take_grill ? (locate(/obj/structure/grille) in loc) : null
+	if(grill)
+		grill.temporary_shatter(time_to_go, time_to_return)
+
+/obj/structure/window/Moved(atom/old_loc, movement_dir, forced, list/old_locs, momentum_change)
+	. = ..()
+	if(loc)
+		update_nearby_icons()
 
 MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/spawner, 0)
 
@@ -460,7 +491,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/unanchored/spawner, 0)
 //2022 BABYYYYY ~lewc
 //2023 ONE YEAR TO GO! -LT3
 /datum/armor/window_reinforced
-	melee = 50
+	melee = 80
 	bomb = 25
 	fire = 80
 	acid = 100
@@ -474,7 +505,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/unanchored/spawner, 0)
 	switch(state)
 		if(RWINDOW_SECURE)
 			if(tool.tool_behaviour == TOOL_WELDER)
-				if(tool.tool_start_check(user))
+				if(tool.tool_start_check(user, heat_required = HIGH_TEMPERATURE_REQUIRED))
 					user.visible_message(span_notice("[user] holds \the [tool] to the security screws on \the [src]..."),
 						span_notice("You begin heating the security screws on \the [src]..."))
 					if(tool.use_tool(src, user, 15 SECONDS, volume = 100))
@@ -569,6 +600,14 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/reinforced/spawner, 0)
 	state = WINDOW_OUT_OF_FRAME
 
 MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/reinforced/unanchored/spawner, 0)
+
+// You can't rust glass! So only reinforced glass can be impacted.
+/obj/structure/window/reinforced/rust_heretic_act()
+	add_atom_colour(COLOR_RUSTED_GLASS, FIXED_COLOUR_PRIORITY)
+	AddElement(/datum/element/rust)
+	set_armor(/datum/armor/none)
+	take_damage(get_integrity() * 0.5)
+	modify_max_integrity(max_integrity * 0.5)
 
 /obj/structure/window/plasma
 	name = "plasma window"
@@ -667,7 +706,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/reinforced/tinted/frosted/spaw
 	anchored = FALSE
 
 /obj/structure/window/plasma/fulltile
-	icon = 'icons/obj/smooth_structures/plasma_window.dmi' //ICON OVERRIDEN IN SKYRAT AESTHETICS - SEE MODULE
+	icon = 'icons/obj/smooth_structures/plasma_window.dmi' //ICON OVERRIDDEN IN SKYRAT AESTHETICS - SEE MODULE
 	icon_state = "plasma_window-0"
 	base_icon_state = "plasma_window"
 	max_integrity = 400
@@ -702,7 +741,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/reinforced/tinted/frosted/spaw
 
 /obj/structure/window/reinforced/fulltile
 	name = "full tile reinforced window"
-	desc = "A full tile reinforced window"
+	desc = "A full tile window that is reinforced with metal rods."
 	icon = 'icons/obj/smooth_structures/reinforced_window.dmi' //ICON OVERRIDDEN IN SKYRAT AESTHETICS - SEE MODULE
 	icon_state = "reinforced_window-0"
 	base_icon_state = "reinforced_window"
@@ -792,10 +831,18 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/reinforced/tinted/frosted/spaw
 	name = "hardened shuttle window"
 	flags_1 = PREVENT_CLICK_UNDER_1
 	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | UNACIDABLE | ACID_PROOF
-	obj_flags = parent_type::obj_flags | NO_DECONSTRUCTION
 
-/obj/structure/window/reinforced/shuttle/indestructible/rcd_vals(mob/user, obj/item/construction/rcd/the_rcd)
-	return FALSE
+/obj/structure/window/reinforced/shuttle/indestructible/welder_act(mob/living/user, obj/item/tool)
+	return NONE
+
+/obj/structure/window/reinforced/shuttle/indestructible/screwdriver_act(mob/living/user, obj/item/tool)
+	return NONE
+
+/obj/structure/window/reinforced/shuttle/indestructible/wrench_act(mob/living/user, obj/item/tool)
+	return NONE
+
+/obj/structure/window/reinforced/shuttle/indestructible/crowbar_act(mob/living/user, obj/item/tool)
+	return NONE
 
 /obj/structure/window/reinforced/plasma/plastitanium
 	name = "plastitanium window"
@@ -852,9 +899,9 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/reinforced/tinted/frosted/spaw
 	resistance_flags = FLAMMABLE
 	armor_type = /datum/armor/none
 	knock_sound = SFX_PAGE_TURN
-	bash_sound = 'sound/weapons/slashmiss.ogg'
-	break_sound = 'sound/items/poster_ripped.ogg'
-	hit_sound = 'sound/weapons/slashmiss.ogg'
+	bash_sound = 'sound/items/weapons/slashmiss.ogg'
+	break_sound = 'sound/items/poster/poster_ripped.ogg'
+	hit_sound = 'sound/items/weapons/slashmiss.ogg'
 	var/static/mutable_appearance/torn = mutable_appearance('icons/obj/smooth_structures/structure_variations.dmi',icon_state = "paper-torn", layer = ABOVE_OBJ_LAYER - 0.1)
 	var/static/mutable_appearance/paper = mutable_appearance('icons/obj/smooth_structures/structure_variations.dmi',icon_state = "paper-whole", layer = ABOVE_OBJ_LAYER - 0.1)
 
@@ -887,7 +934,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/window/reinforced/tinted/frosted/spaw
 
 /obj/structure/window/paperframe/update_icon(updates=ALL)
 	. = ..()
-	if((updates & UPDATE_SMOOTHING) && (smoothing_flags & (SMOOTH_CORNERS|SMOOTH_BITMASK)))
+	if((updates & UPDATE_SMOOTHING) && (smoothing_flags & USES_SMOOTHING))
 		QUEUE_SMOOTH(src)
 
 /obj/structure/window/paperframe/update_overlays()

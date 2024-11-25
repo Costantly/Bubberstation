@@ -1,7 +1,7 @@
 ///the minimum size of a pill or patch
-#define MIN_VOLUME 5
+#define MIN_VOLUME 1 // BUBBER EDIT - 5 -> 1
 ///the maximum size a pill or patch can be
-#define MAX_VOLUME 50
+#define MAX_VOLUME 100 // BUBBER EDIT - 50 -> 100
 ///max amount of pills allowed on our tile before we start storing them instead
 #define MAX_FLOOR_PRODUCTS 10
 
@@ -10,7 +10,6 @@
 	name = "chemical press"
 	desc = "A press that makes pills, patches and bottles."
 	icon_state = "pill_press"
-	active_power_usage = BASE_MACHINE_ACTIVE_CONSUMPTION * 2
 
 	/// current operating product (pills or patches)
 	var/product = "pill"
@@ -26,6 +25,10 @@
 	var/packaging_category
 	/// list of products stored in the machine, so we dont have 610 pills on one tile
 	var/list/stored_products = list()
+	// BUBBER EDIT BEGIN
+	/// Increases the standard plumbing machine buffer to account for the increased max volume
+	buffer = MAX_VOLUME
+	// BUBBER EDIT END
 
 /obj/machinery/plumbing/pill_press/Initialize(mapload, bolt, layer)
 	. = ..()
@@ -36,9 +39,8 @@
 		var/list/types = list(
 			CAT_PILLS = GLOB.reagent_containers[CAT_PILLS],
 			CAT_PATCHES = GLOB.reagent_containers[CAT_PATCHES],
-			"Bottles" = list(/obj/item/reagent_containers/cup/bottle),
+			CAT_MEDBOTTLES = GLOB.reagent_containers[CAT_MEDBOTTLES], // BUBBER EDIT - CAT_MEDBOTTLES
 			CAT_HYPOS = GLOB.reagent_containers[CAT_HYPOS], // SKYRAT EDIT ADDITION - Hypovials
-
 		)
 
 		packaging_types = list()
@@ -64,7 +66,7 @@
 	. = ..()
 	. += span_notice("The [name] currently has [stored_products.len] stored. There needs to be less than [MAX_FLOOR_PRODUCTS] on the floor to continue dispensing.")
 
-/// decode product category from it's type path and returns the decoded typepath
+/// decode product category from its type path and returns the decoded typepath
 /obj/machinery/plumbing/pill_press/proc/decode_category()
 	var/obj/item/reagent_containers/container = locate(packaging_type)
 	if(ispath(container, /obj/item/reagent_containers/pill/patch))
@@ -80,7 +82,7 @@
 	return container
 
 /obj/machinery/plumbing/pill_press/process(seconds_per_tick)
-	if(machine_stat & NOPOWER)
+	if(!is_operational)
 		return
 
 	//shift & check to account for floating point inaccuracies
@@ -147,7 +149,7 @@
 
 	return data
 
-/obj/machinery/plumbing/pill_press/ui_act(action, params)
+/obj/machinery/plumbing/pill_press/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
 	. = ..()
 	if(.)
 		return

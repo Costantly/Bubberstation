@@ -151,7 +151,7 @@
 			if("No")
 				return
 			if("Maybe")
-				playsound(src, 'sound/machines/buzz-sigh.ogg', 50, FALSE)
+				playsound(src, 'sound/machines/buzz/buzz-sigh.ogg', 50, FALSE)
 				audible_message(span_warning("The [src] buzzes!"))
 				return
 
@@ -274,20 +274,20 @@
 	icon_state = "fir36"
 	actions_types = list(/datum/action/item_action/adjust)
 	clothing_flags = BLOCK_GAS_SMOKE_EFFECT | MASKINTERNALS //same flags as actual sec hailer gas mask
-	flags_inv = HIDESNOUT // | HIDEFACE // bubber edit, makes no sense to block the whole face if it's blocking only half of it, right? // BUBBER TODO: Modularity
+	flags_inv = HIDESNOUT
 	flags_cover = NONE
 	visor_flags = BLOCK_GAS_SMOKE_EFFECT | MASKINTERNALS
-	visor_flags_inv = HIDESNOUT // | HIDEFACE // bubber edit // BUBBER TODO: Modularity
+	visor_flags_inv = HIDESNOUT
 	w_class = WEIGHT_CLASS_SMALL
 	tint = 0
+	interaction_flags_click = NEED_DEXTERITY
 
 /obj/item/clothing/mask/gas/nightlight/attack_self(mob/user)
-	adjustmask(user)
+	adjust_visor(user)
 
-/obj/item/clothing/mask/gas/nightlight/AltClick(mob/user)
-	..()
-	if(user.can_perform_action(src, NEED_DEXTERITY))
-		adjustmask(user)
+/obj/item/clothing/mask/gas/nightlight/click_alt(mob/user)
+	adjust_visor(user)
+	return CLICK_ACTION_SUCCESS
 
 /obj/item/clothing/mask/gas/nightlight/examine(mob/user)
 	. = ..()
@@ -479,7 +479,7 @@
 	var/goggles = FALSE
 
 /obj/item/clothing/head/avipilot/proc/adjust_goggles(mob/living/carbon/user)
-	if(user?.incapacitated())
+	if(user?.incapacitated)
 		return
 	if(goggles)
 		icon_state = "avipilotup"
@@ -489,7 +489,7 @@
 		to_chat(user, span_notice("You focus all your willpower to put the goggles down on your eyes."))
 	goggles = !goggles
 	if(user)
-		user.head_update(src, forced = 1)
+		user.update_worn_head()
 		user.update_mob_action_buttons()
 
 /obj/item/clothing/head/avipilot/ui_action_click(mob/living/carbon/user, action)
@@ -560,6 +560,7 @@
 	icon = 'modular_skyrat/master_files/icons/donator/obj/custom.dmi'
 	worn_icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/custom_w.dmi'
 	alternate_worn_layer = UNDER_SUIT_LAYER
+	kink_collar = TRUE
 	/// What's the name on the tag, if any?
 	var/tagname = null
 	/// What treat item spawns inside the collar?
@@ -798,7 +799,6 @@
 	worn_icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/head.dmi'
 	icon_state = "emissionhelm"
 
-
 // Donation reward for CandleJax
 /obj/item/clothing/head/helmet/space/plasmaman/candlejax2
 	name = "azulean's environment helmet"
@@ -924,7 +924,7 @@
 	slot_flags = up ? ITEM_SLOT_EYES | ITEM_SLOT_HEAD : ITEM_SLOT_EYES
 	toggle_vision_effects()
 
-/obj/item/clothing/glasses/welding/steampunk_goggles/weldingvisortoggle(mob/user)
+/obj/item/clothing/glasses/welding/steampunk_goggles/adjust_visor(mob/user)
 	. = ..()
 	handle_sight_updating(user)
 
@@ -951,7 +951,7 @@
 	playsound(user, shutters_sound, 100, TRUE)
 	if(iscarbon(user))
 		var/mob/living/carbon/carbon_user = user
-		carbon_user.head_update(src, forced = 1)
+		carbon_user.update_worn_head()
 	update_item_action_buttons()
 	return TRUE
 
@@ -983,7 +983,7 @@
 		if(iscarbon(user))
 			var/mob/living/carbon/carbon_user = user
 			carbon_user.update_tint()
-			carbon_user.head_update(src, forced = TRUE)
+			carbon_user.update_worn_head()
 
 /obj/item/clothing/glasses/welding/steampunk_goggles/ui_action_click(mob/user, actiontype, is_welding_toggle = FALSE)
 	if(!is_welding_toggle)
@@ -1128,8 +1128,6 @@
 		"snuggle",
 		"cuddle",
 		"kiss",
-		//"feed Dan Kelly", /bubber edit on request/
-		//"hoard Shinzo Shore", /bubber edit on request/
 		"spoil friends",
 		"hold hands",
 		"have this license",
@@ -1357,10 +1355,10 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 /obj/item/coin/donator/marsoc
 	name = "MARSOC Challenge Coin"
 	desc = "This is a challenge coin given to all MARSOC members upon honorable separation from the Corps. \
-			The coin has the insignia of the Marine Special Operations Command on one side, and the Sol Federation Marine Corps logo on the other. \
+			The coin has the insignia of the Marine Special Operations Command on one side, and the Terran Government Marine Corps logo on the other. \
 			This one has an engraving on the Marine Corps logo side, etched in a circle around it: \
 			\"To Staff Sargent Henry Rockwell, for his exemplary service to the Special Operations community and his outstanding moral fiber \
-			and shining example to the core values of the Sol Federation Marine Corps.\""
+			and shining example to the core values of the Terran Government Marine Corps.\""
 	icon = 'modular_skyrat/master_files/icons/donator/obj/custom.dmi'
 	sideslist = list("MARSOC", "SFMC")
 
@@ -1413,6 +1411,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 	icon_state = "short_coat"
 	icon = 'modular_skyrat/master_files/icons/donator/obj/clothing/suits.dmi'
 	worn_icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/suit.dmi'
+	supports_variations_flags = CLOTHING_DIGITIGRADE_VARIATION_NO_NEW_ICON
 
 // Donation reward for Thedragmeme
 /obj/item/clothing/neck/flower_collar
@@ -1421,6 +1420,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 	icon = 'modular_skyrat/master_files/icons/donator/obj/clothing/necklaces.dmi'
 	worn_icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/neck.dmi'
 	icon_state = "flower_collar"
+	kink_collar = TRUE
 
 // Donation reward for Sigmar Alkahest
 /obj/item/clothing/under/costume/skyrat/kimono/sigmar
@@ -1449,9 +1449,9 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 	hoodtype = /obj/item/clothing/head/hooded/sigmarcoat
 	supports_variations_flags = NONE
 
-// Donation reward for Sonicgotnuked
+// Donation reward for The Sharkenning
 
-/obj/item/clothing/gloves/ring/hypno/nuke
+/obj/item/clothing/gloves/ring/hypno/sharkenning
 	name = "suspiciously glossy ring"
 	desc = "This ring oozes with an assertive edge as sharp light bends along the smooth, black bronze. Like the finger that wears it, an exceptional amount of polish repels nearly all the light that glances along its surface. If you look closer, a slight golden hue indicates the precious metals inside the alloy."
 	icon = 'modular_skyrat/master_files/icons/donator/obj/clothing/gloves.dmi'
@@ -1462,7 +1462,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 	righthand_file = null
 	spans = list("glossy")
 
-/obj/item/clothing/ears/kinky_headphones/nuke
+/obj/item/clothing/ears/kinky_headphones/sharkenning
 	name = "suspiciously glossy headphones"
 	desc = "Black metalic headphones with a glossy finish. The soft rubber cushions are comftorable and form fitting"
 	icon_state = "kinkphones_black_off"
@@ -1499,7 +1499,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 	icon_state = "razurath_coat"
 
 // Donation reward for MaSvedish
-/obj/item/clothing/mask/holocigarette/masvedishcigar
+/obj/item/holocigarette/masvedishcigar
 	name = "holocigar"
 	desc = "A soft buzzing device that, using holodeck technology, replicates a slow burn cigar. Now with less-shock technology. It has a small inscription of 'MG' on the golden label."
 	icon = 'modular_skyrat/master_files/icons/donator/obj/clothing/masks.dmi'
@@ -1592,8 +1592,11 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 	icon_state = "digicoat_interdyne"
 
 /obj/item/clothing/suit/armor/hos/elofy
-	name = "solar admiral coat"
-	desc = "A traditional naval officer uniform of the late 63rd Expeditionary Fleet. This faithful recreation bears the admiral's crest of the Luna Wolves Legion. It is uniquely tailored to the form of a certain wolf girl."
+	name = "anime admiral coat"
+	desc = "This coat is a near perfect replica of the one worn by Admiral Yi Sun-Sin, main character from \"Heroes of the Galactic Conflict\", \
+		an animated war drama set between the Free Planetary Trade Union and the Second Galactic Empire. \
+		It proved to be a sensational piece among those who appreciate animated cartoons and period war dramas, \
+		but hasn't had much spread outside of the Terran Government."
 	icon = 'modular_skyrat/master_files/icons/donator/obj/clothing/suits.dmi'
 	worn_icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/suit.dmi'
 	icon_state = "coat_blackblue"
@@ -1628,7 +1631,11 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 
 
 /obj/item/clothing/head/hats/hos/elofy
-	name = "solar admiral hat"
+	name = "anime admiral hat"
+	desc = "This hat is a near perfect replica of the one worn by Admiral Yi Sun-Sin, main character from \"Heroes of the Galactic Conflict\", \
+		an animated war drama set between the Free Planetary Trade Union and the Second Galactic Empire. \
+		It proved to be a sensational piece among those who appreciate animated cartoons and period war dramas, \
+		but hasn't had much spread outside of the Terran Government."
 	icon ='modular_skyrat/master_files/icons/donator/obj/clothing/hats.dmi'
 	worn_icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/head.dmi'
 	icon_state = "hat_black"
@@ -1646,7 +1653,11 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 
 
 /obj/item/clothing/gloves/elofy
-	name = "solar admiral gloves"
+	name = "anime admiral gloves"
+	desc = "These gloves are a near perfect replica of those worn by Admiral Yi Sun-Sin, main character from \"Heroes of the Galactic Conflict\", \
+		an animated war drama set between the Free Planetary Trade Union and the Second Galactic Empire. \
+		It proved to be a sensational piece among those who appreciate animated cartoons and period war dramas, \
+		but hasn't had much spread outside of the Terran Government."
 	icon = 'modular_skyrat/master_files/icons/donator/obj/clothing/gloves.dmi'
 	worn_icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/hands.dmi'
 	icon_state = "gloves_black"
@@ -1663,7 +1674,11 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 	)
 
 /obj/item/clothing/shoes/jackboots/elofy
-	name = "solar admiral boots"
+	name = "anime admiral boots"
+	desc = "These boots are a near perfect replica of those worn by Admiral Yi Sun-Sin, main character from \"Heroes of the Galactic Conflict\", \
+		an animated war drama set between the Free Planetary Trade Union and the Second Galactic Empire. \
+		It proved to be a sensational piece among those who appreciate animated cartoons and period war dramas, \
+		but hasn't had much spread outside of the Terran Government."
 	icon = 'modular_skyrat/master_files/icons/donator/obj/clothing/shoes.dmi'
 	worn_icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/feet.dmi'
 	icon_state = "boots_blackblue"
@@ -1777,9 +1792,9 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/sign/poster/contraband/korpstech, 32)
 /obj/item/clothing/head/anubite
 	name = "\improper Anubite headpiece"
 	desc = "A dark coloured headpiece with golden accents. Its features seem reminiscent of the god Anubis."
-	icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/head.dmi'
+	icon = 'modular_skyrat/master_files/icons/donator/obj/clothing/hats.dmi'
 	icon_state = "anubite_headpiece"
-	worn_icon = 'modular_skyrat/master_files/icons/donator/obj/clothing/hats.dmi'
+	worn_icon = 'modular_skyrat/master_files/icons/donator/mob/clothing/head.dmi'
 	worn_y_offset = 4
 
 //  Donator reward Smol42

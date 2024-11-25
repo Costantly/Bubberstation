@@ -101,6 +101,7 @@
 
 				//neck
 				/obj/item/key/collar = 48,
+				/obj/item/clothing/erp_leash = 8,
 				/obj/item/clothing/neck/kink_collar = 8,
 				/obj/item/clothing/neck/human_petcollar = 8,
 				/obj/item/clothing/neck/human_petcollar/choker = 8,
@@ -194,7 +195,7 @@
 /obj/machinery/vending/dorms/proc/check_menu(mob/living/user, obj/item/multitool)
 	if(!istype(user))
 		return FALSE
-	if(user.incapacitated())
+	if(user.incapacitated)
 		return FALSE
 	if(!multitool || !user.is_holding(multitool))
 		return FALSE

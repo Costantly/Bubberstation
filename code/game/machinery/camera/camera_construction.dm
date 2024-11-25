@@ -30,7 +30,7 @@
 	switch(camera_construction_state)
 		if(CAMERA_STATE_WIRED)
 			tool.play_tool_sound(src)
-			var/input = tgui_input_text(user, "Which networks would you like to connect this camera to? Separate networks with a comma. No Spaces!\nFor example: SS13,Security,Secret", "Set Network", "SS13")
+			var/input = tgui_input_text(user, "Which networks would you like to connect this camera to? Separate networks with a comma. No Spaces!\nFor example: SS13,Security,Secret", "Set Network", "SS13", max_length = MAX_NAME_LEN)
 			if(isnull(input))
 				return ITEM_INTERACT_BLOCKING
 			var/list/tempnetwork = splittext(input, ",")
@@ -39,7 +39,7 @@
 				return ITEM_INTERACT_BLOCKING
 			for(var/i in tempnetwork)
 				tempnetwork -= i
-				tempnetwork += lowertext(i)
+				tempnetwork += LOWER_TEXT(i)
 			camera_construction_state = CAMERA_STATE_FINISHED
 			toggle_cam(user, displaymessage = FALSE)
 			network = tempnetwork

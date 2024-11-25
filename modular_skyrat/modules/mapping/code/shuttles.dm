@@ -69,7 +69,16 @@
 	shuttleId = "slaver_syndie"
 	possible_destinations = "syndicate_ne;syndicate_nw;syndicate_n;syndicate_se;syndicate_sw;syndicate_s"
 	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | ACID_PROOF
-	obj_flags = CAN_BE_HIT | NO_DECONSTRUCTION
+
+// previously NO_DECONSTRUCTION
+/obj/machinery/computer/shuttle/slaver/default_deconstruction_screwdriver(mob/user, icon_state_open, icon_state_closed, obj/item/screwdriver)
+	return NONE
+
+/obj/machinery/computer/shuttle/slaver/default_deconstruction_crowbar(obj/item/crowbar, ignore_panel, custom_deconstruct)
+	return NONE
+
+/obj/machinery/computer/shuttle/slaver/default_pry_open(obj/item/crowbar, close_after_pry = FALSE, open_density = FALSE, closed_density = TRUE)
+	return NONE
 
 /datum/map_template/shuttle/slaver_ship
 	port_id = "slaver ship"
@@ -83,7 +92,7 @@
 	name = "Privateer Slaver"
 	prompt_name = "a privateer slaver"
 	you_are_text = "You're here to capture valuable hostages to sell into slavery."
-	flavour_text = "You're part of a privateer crew that sometimes takes contracts from the illusive Guild, which offers bounties and contracts to independent crews. Raiding colonies of the many less technologically advanced species in the area is much easier than this. You've been told that your mission is to capture as many valuable hostages from the station as possible. Your anonymous employer insists on the importance of humiliating SolFed by snatching those under their protection from right under their noses."
+	flavour_text = "You're part of a privateer crew that sometimes takes contracts from the illusive Guild, which offers bounties and contracts to independent crews. Raiding colonies of the many less technologically advanced species in the area is much easier than this. You've been told that your mission is to capture as many valuable hostages from the station as possible. Your anonymous employer insists on the importance of humiliating TerraGov by snatching those under their protection from right under their noses."
 	important_text = ""
 
 /obj/effect/mob_spawn/ghost_role/human/guild/slaver

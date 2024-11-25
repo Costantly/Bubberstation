@@ -9,8 +9,8 @@
 	description = "A secret base researching illegal bioweapons, it is closely guarded by an elite team of syndicate agents."
 	suffix = "icemoon_underground_syndicate_base1_skyrat.dmm"
 	allow_duplicates = FALSE
-	// never_spawn_with = list(/datum/map_template/ruin/lavaland/skyrat/syndicate_base) Bubber Removal
-	always_place = TRUE
+	always_place = FALSE
+	unpickable = TRUE
 
 /datum/map_template/ruin/icemoon/underground/skyrat/mining_site_below
 	name = "Ice-Ruin Mining Site Underground"

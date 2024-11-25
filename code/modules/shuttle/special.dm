@@ -48,7 +48,7 @@
 	. = ..()
 	icon_state = active ? icon_state_on : initial(icon_state)
 
-/obj/machinery/power/emitter/energycannon/magical/process()
+/obj/machinery/power/emitter/energycannon/magical/process_early(seconds_per_tick)
 	. = ..()
 	if(active_tables.len >= tables_required)
 		if(!active)
@@ -79,7 +79,6 @@
 	var/obj/machinery/power/emitter/energycannon/magical/our_statue
 	var/list/mob/living/sleepers = list()
 	var/never_spoken = TRUE
-	obj_flags = parent_type::obj_flags | NO_DECONSTRUCTION
 
 /obj/structure/table/abductor/wabbajack/Initialize(mapload)
 	. = ..()
@@ -88,6 +87,12 @@
 /obj/structure/table/abductor/wabbajack/Destroy()
 	STOP_PROCESSING(SSobj, src)
 	. = ..()
+
+/obj/structure/table/abductor/wabbajack/screwdriver_act(mob/living/user, obj/item/tool)
+	return NONE
+
+/obj/structure/table/abductor/wabbajack/wrench_act(mob/living/user, obj/item/tool)
+	return NONE
 
 /obj/structure/table/abductor/wabbajack/process()
 	if(isnull(our_statue))
@@ -148,9 +153,10 @@
 /obj/structure/table/abductor/wabbajack/right
 	desc = "It wakes so you may sleep."
 
-// Bar staff, GODMODE mobs(as long as they stay in the shuttle) that just want to make sure people have drinks
-// and a good time.
-
+/**
+ * Bar staff, mobs with the TRAIT_GODMODE trait (as long as they stay in the shuttle)
+ * that just want to make sure people have drinks and a good shuttle time.
+ */
 /mob/living/basic/drone/snowflake/bardrone
 	name = "Bardrone"
 	desc = "A barkeeping drone, a robot built to tend bars."
@@ -173,7 +179,6 @@
 
 /obj/structure/table/wood/shuttle_bar
 	resistance_flags = LAVA_PROOF | FIRE_PROOF | ACID_PROOF
-	obj_flags = parent_type::obj_flags | NO_DECONSTRUCTION
 	max_integrity = 1000
 	var/boot_dir = 1
 
@@ -183,6 +188,12 @@
 		COMSIG_ATOM_ENTERED = PROC_REF(on_entered),
 	)
 	AddElement(/datum/element/connect_loc, loc_connections)
+
+/obj/structure/table/wood/shuttle_bar/screwdriver_act(mob/living/user, obj/item/tool)
+	return NONE
+
+/obj/structure/table/wood/shuttle_bar/wrench_act(mob/living/user, obj/item/tool)
+	return NONE
 
 /obj/structure/table/wood/shuttle_bar/proc/on_entered(datum/source, atom/movable/AM)
 	SIGNAL_HANDLER
@@ -393,7 +404,6 @@
 	desc = "Communism powerful force."
 	icon = 'icons/effects/96x96.dmi'
 	icon_state = "communist"
-	layer = ABOVE_OPEN_TURF_LAYER
 	pixel_x = -32
 	pixel_y = -32
 

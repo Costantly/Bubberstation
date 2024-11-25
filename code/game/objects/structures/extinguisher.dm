@@ -1,7 +1,7 @@
 /obj/structure/extinguisher_cabinet
 	name = "extinguisher cabinet"
 	desc = "A small wall mounted cabinet designed to hold a fire extinguisher."
-	icon = 'icons/obj/wallmounts.dmi' //ICON OVERRIDEN IN SKYRAT AESTHETICS - SEE MODULE
+	icon = 'icons/obj/wallmounts.dmi' //ICON OVERRIDDEN IN SKYRAT AESTHETICS - SEE MODULE
 	icon_state = "extinguisher_closed"
 	anchored = TRUE
 	density = FALSE
@@ -16,8 +16,6 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/extinguisher_cabinet, 29)
 	. = ..()
 	if(building)
 		opened = TRUE
-		//icon_state = "extinguisher_empty" ORIGINAL
-		icon_state = "extinguisher_empty_open"	//SKYRAT EDIT CHANGE - AESTHETICS
 	else
 		stored_extinguisher = new /obj/item/extinguisher(src)
 	update_appearance(UPDATE_ICON)
@@ -161,6 +159,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/structure/extinguisher_cabinet, 29)
 
 	return ..()
 */
+
 
 /obj/structure/extinguisher_cabinet/atom_break(damage_flag)
 	. = ..()

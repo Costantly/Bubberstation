@@ -2,7 +2,7 @@
 #define CHANNEL_LOBBYMUSIC 1024
 #define CHANNEL_ADMIN 1023
 #define CHANNEL_VOX 1022
-#define CHANNEL_JUKEBOX 1011 // SKYRAT EDIT - JUKEBOX - ORIGINAL: #define CHANNEL_JUKEBOX 1021
+#define CHANNEL_JUKEBOX 1021
 #define CHANNEL_HEARTBEAT 1020 //sound channel for heartbeats
 #define CHANNEL_BOSS_MUSIC 1019
 #define CHANNEL_AMBIENCE 1018
@@ -10,6 +10,11 @@
 #define CHANNEL_TRAITOR 1016
 #define CHANNEL_CHARGED_SPELL 1015
 #define CHANNEL_ELEVATOR 1014
+//THIS SHOULD ALWAYS BE THE LOWEST ONE!
+//KEEP IT UPDATED
+#define CHANNEL_HIGHEST_AVAILABLE 1013
+
+#define MAX_INSTRUMENT_CHANNELS (128 * 6)
 
 // SKYRAT EDIT START - JUKEBOX
 #define CHANNEL_JUKEBOX_START 1006
@@ -28,17 +33,11 @@
 ///The default exponent of sound falloff
 #define SOUND_FALLOFF_EXPONENT 6
 
-//THIS SHOULD ALWAYS BE THE LOWEST ONE!
-//KEEP IT UPDATED
-
-#define CHANNEL_HIGHEST_AVAILABLE 1005 //SKYRAT EDIT CHANGE - JUKEBOX > ORIGINAL VALUE 1015
-
-#define MAX_INSTRUMENT_CHANNELS (128 * 6)
-
 #define SOUND_MINIMUM_PRESSURE 10
 
 #define INTERACTION_SOUND_RANGE_MODIFIER -3
 #define EQUIP_SOUND_VOLUME 30
+#define LIQUID_SLOSHING_SOUND_VOLUME 10
 #define PICKUP_SOUND_VOLUME 15
 #define DROP_SOUND_VOLUME 20
 #define YEET_SOUND_VOLUME 90
@@ -154,6 +153,11 @@
 #define ANNOUNCER_SHUTTLE "announcer_shuttle"
 //SKYRAT EDIT END
 
+// BUBBER EDIT ADDITION BEGIN
+#define ANNOUNCER_GRAVGENBLACKOUT "announcer_gravgenblackout"
+#define ANNOUNCER_METEORWARNING "announcer_meteorwarning"
+// BUBBER EDIT ADDITION END
+
 
 /// Global list of all of our announcer keys.
 GLOBAL_LIST_INIT(announcer_keys, list(
@@ -199,6 +203,10 @@ GLOBAL_LIST_INIT(announcer_keys, list(
 	ANNOUNCER_NRI_RAIDERS,
 	ANNOUNCER_OUTBREAK6,
 	//SKYRAT EDIT END
+	// BUBBER EDIT ADDITION BEGIN
+	ANNOUNCER_GRAVGENBLACKOUT,
+	ANNOUNCER_METEORWARNING,
+	// BUBBER EDIT ADDITION END
 ))
 
 /// List of all of our sound keys.
@@ -236,3 +244,26 @@ GLOBAL_LIST_INIT(announcer_keys, list(
 #define SFX_SEAR "sear"
 #define SFX_REEL "reel"
 #define SFX_RATTLE "rattle"
+#define SFX_PORTAL_ENTER "portal_enter"
+#define SFX_PORTAL_CLOSE "portal_closed"
+#define SFX_PORTAL_CREATED "portal_created"
+#define SFX_SCREECH "screech"
+#define SFX_TOOL_SWITCH "tool_switch"
+#define SFX_KEYBOARD_CLICKS "keyboard_clicks"
+#define SFX_STONE_DROP "stone_drop"
+#define SFX_STONE_PICKUP "stone_pickup"
+#define SFX_MUFFLED_SPEECH "muffspeech"
+#define SFX_DEFAULT_FISH_SLAP "default_fish_slap"
+#define SFX_ALT_FISH_SLAP "alt_fish_slap"
+#define SFX_FISH_PICKUP "fish_pickup"
+#define SFX_CAT_MEOW "cat_meow"
+#define SFX_CAT_PURR "cat_purr"
+#define SFX_LIQUID_POUR "liquid_pour"
+#define SFX_SNORE_FEMALE "snore_female"
+#define SFX_SNORE_MALE "snore_male"
+#define SFX_PLASTIC_BOTTLE_LIQUID_SLOSH "plastic_bottle_liquid_slosh"
+#define SFX_DEFAULT_LIQUID_SLOSH "default_liquid_slosh"
+#define SFX_PLATE_ARMOR_RUSTLE "plate_armor_rustle"
+#define SFX_PIG_OINK "pig_oink"
+#define SFX_VISOR_UP "visor_up"
+#define SFX_VISOR_DOWN "visor_down"

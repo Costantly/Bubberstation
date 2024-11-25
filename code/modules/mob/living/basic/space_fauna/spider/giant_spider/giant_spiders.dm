@@ -20,6 +20,7 @@
 	gold_core_spawnable = HOSTILE_SPAWN
 	ai_controller = /datum/ai_controller/basic_controller/giant_spider
 	bite_injection_flags = INJECT_CHECK_PENETRATE_THICK
+	max_grab = GRAB_AGGRESSIVE
 	/// Actions to grant on Initialize
 	var/list/innate_actions = null
 
@@ -109,9 +110,6 @@
 	. = ..()
 	AddElement(/datum/element/web_walker, /datum/movespeed_modifier/fast_web)
 
-/mob/living/basic/spider/giant/hunter/mold //skyrat edit: exists to make molds not spam the world with simple mobs
-	basic_mob_flags = DEL_ON_DEATH
-	
 ///Used in the caves away mission.
 /mob/living/basic/spider/giant/hunter/away_caves
 	minimum_survivable_temperature = 0
@@ -185,8 +183,9 @@
 	datahud.show_to(src)
 
 	AddComponent(/datum/component/healing_touch,\
-		heal_brute = 25,\
-		heal_burn = 25,\
+		heal_brute = 10,\
+		heal_burn = 10,\
+		heal_time = 2.5 SECONDS,\
 		interaction_key = DOAFTER_SOURCE_SPIDER,\
 		valid_targets_typecache = typecacheof(list(/mob/living/basic/spider/giant)),\
 		action_text = "%SOURCE% begins wrapping the wounds of %TARGET%.",\
@@ -320,7 +319,7 @@
 	melee_damage_lower = 5
 	melee_damage_upper = 10
 	unsuitable_atmos_damage = 0
-	minimum_survivable_temperature = 0
+	minimum_survivable_temperature = 75
 	maximum_survivable_temperature = 700
 	unsuitable_cold_damage = 0
 	wound_bonus = 25
@@ -332,7 +331,7 @@
 	speed = 5
 	player_speed_modifier = -4
 	sight = SEE_TURFS
-	menu_description = "Atmospherically resistant with the ability to destroy walls and limbs, and to send warnings to the nest."
+	menu_description = "Has the ability to destroy walls and limbs, and to send warnings to the nest."
 
 /mob/living/basic/spider/giant/breacher/Initialize(mapload)
 	. = ..()
@@ -609,6 +608,6 @@
 
 /mob/living/basic/spider/giant/sgt_araneus/Initialize(mapload)
 	. = ..()
-	AddElement(/datum/element/pet_bonus, "chitters proudly!")
+	AddElement(/datum/element/pet_bonus, "chitter")
 	AddElement(/datum/element/ai_retaliate)
 	ADD_TRAIT(src, TRAIT_VENTCRAWLER_ALWAYS, INNATE_TRAIT)

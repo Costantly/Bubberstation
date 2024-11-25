@@ -177,19 +177,15 @@
 		flags_1 |= PREVENT_CONTENTS_EXPLOSION_1
 	}
 
-	if(HAS_TRAIT(SSstation, STATION_TRAIT_BOTS_GLITCHED))
+	if(HAS_TRAIT(SSstation, STATION_TRAIT_MACHINES_GLITCHED) && mapload)
 		randomize_language_if_on_station()
 	SEND_GLOBAL_SIGNAL(COMSIG_GLOB_NEW_MACHINE, src)
 
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/machinery/LateInitialize()
-	. = ..()
-	power_change()
-	if(use_power == NO_POWER_USE)
-		return
-	update_current_power_usage()
-	setup_area_power_relationship()
+	SHOULD_NOT_OVERRIDE(TRUE)
+	post_machine_initialize()
 
 /obj/machinery/Destroy(force)
 	SSmachines.unregister_machine(src)
@@ -199,6 +195,20 @@
 	unset_static_power()
 
 	return ..()
+
+/**
+ * Called in LateInitialize meant to be the machine replacement to it
+ * This sets up power for the machine and requires parent be called,
+ * ensuring power works on all machines unless exempted with NO_POWER_USE.
+ * This is the proc to override if you want to do anything in LateInitialize.
+ */
+/obj/machinery/proc/post_machine_initialize()
+	SHOULD_CALL_PARENT(TRUE)
+	power_change()
+	if(use_power == NO_POWER_USE)
+		return
+	update_current_power_usage()
+	setup_area_power_relationship()
 
 /**
  * proc to call when the machine starts to require power after a duration of not requiring power
@@ -274,10 +284,21 @@
 /obj/machinery/proc/locate_machinery()
 	return
 
+///Early process for machines added to SSmachines.processing_early to prioritize power draw
+/obj/machinery/proc/process_early()
+	set waitfor = FALSE
+	return PROCESS_KILL
+
 /obj/machinery/process()//If you dont use process or power why are you here
 	return PROCESS_KILL
 
+///Late process for machines added to SSmachines.processing_late to gather accurate recordings
+/obj/machinery/proc/process_late()
+	set waitfor = FALSE
+	return PROCESS_KILL
+
 /obj/machinery/proc/process_atmos()//If you dont use process why are you here
+	set waitfor = FALSE
 	return PROCESS_KILL
 
 ///Called when we want to change the value of the machine_stat variable. Holds bitflags.
@@ -328,7 +349,6 @@
 	if(drop)
 		dump_inventory_contents()
 	update_appearance()
-	updateUsrDialog()
 
 /**
  * Drop every movable atom in the machine's contents list, including any components and circuit.
@@ -396,6 +416,10 @@
 /obj/machinery/proc/close_machine(atom/movable/target, density_to_set = TRUE)
 	state_open = FALSE
 	set_density(density_to_set)
+	if (!density)
+		update_appearance()
+		return
+
 	if(!target)
 		for(var/atom in loc)
 			if (!(can_be_occupant(atom)))
@@ -413,7 +437,6 @@
 	if(target && !target.has_buckled_mobs() && (!isliving(target) || !mobtarget.buckled))
 		set_occupant(target)
 		target.forceMove(src)
-	updateUsrDialog()
 	update_appearance()
 
 ///updates the use_power var for this machine and updates its static power usage from its area to reflect the new value
@@ -580,12 +603,14 @@
 	set_panel_open(!panel_open)
 
 /obj/machinery/can_interact(mob/user)
+	if(QDELETED(user))
+		return FALSE
+
 	if((machine_stat & (NOPOWER|BROKEN)) && !(interaction_flags_machine & INTERACT_MACHINE_OFFLINE)) // Check if the machine is broken, and if we can still interact with it if so
 		return FALSE
 
 	if(SEND_SIGNAL(user, COMSIG_TRY_USE_MACHINE, src) & COMPONENT_CANT_USE_MACHINE_INTERACT)
 		return FALSE
-
 
 	if(isAdminGhostAI(user))
 		return TRUE //the Gods have unlimited power and do not care for things such as range or blindness
@@ -609,7 +634,6 @@
 	if(!.)
 		return FALSE
 
-
 	if((interaction_flags_machine & INTERACT_MACHINE_REQUIRES_SIGHT) && user.is_blind())
 		to_chat(user, span_warning("This machine requires sight to use."))
 		return FALSE
@@ -623,6 +647,11 @@
 
 	if(interaction_flags_machine & INTERACT_MACHINE_REQUIRES_SILICON) //if the user was a silicon, we'd have returned out earlier, so the user must not be a silicon
 		return FALSE
+
+	if(interaction_flags_machine & INTERACT_MACHINE_REQUIRES_STANDING)
+		var/mob/living/living_user = user
+		if(!(living_user.mobility_flags & MOBILITY_MOVE))
+			return FALSE
 
 	return TRUE // If we passed all of those checks, woohoo! We can interact with this machine.
 
@@ -658,16 +687,15 @@
 
 //Return a non FALSE value to interrupt attack_hand propagation to subtypes.
 /obj/machinery/interact(mob/user)
-	if(interaction_flags_machine & INTERACT_MACHINE_SET_MACHINE)
-		user.set_machine(src)
 	update_last_used(user)
-	. = ..()
+	return ..()
 
-/obj/machinery/ui_act(action, list/params)
-	add_fingerprint(usr)
-	update_last_used(usr)
-	if(HAS_AI_ACCESS(usr) && !GLOB.cameranet.checkTurfVis(get_turf(src))) //We check if they're an AI specifically here, so borgs can still access off-camera stuff.
-		to_chat(usr, span_warning("You can no longer connect to this device!"))
+/obj/machinery/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+	var/mob/user = ui.user
+	add_fingerprint(user)
+	update_last_used(user)
+	if(isAI(user) && !GLOB.cameranet.checkTurfVis(get_turf(src))) //We check if they're an AI specifically here, so borgs/adminghosts/human wand can still access off-camera stuff.
+		to_chat(user, span_warning("You can no longer connect to this device!"))
 		return FALSE
 	return ..()
 
@@ -759,13 +787,14 @@
 		return
 	update_last_used(user)
 
-/obj/machinery/item_interaction(mob/living/user, obj/item/tool, list/modifiers, is_right_clicking)
+/obj/machinery/base_item_interaction(mob/living/user, obj/item/tool, list/modifiers)
 	if(SEND_SIGNAL(user, COMSIG_TRY_USE_MACHINE, src) & COMPONENT_CANT_USE_MACHINE_TOOLS)
-		return ITEM_INTERACT_ANY_BLOCKER
+		return ITEM_INTERACT_BLOCKING
+
 	. = ..()
-	if(. & ITEM_INTERACT_BLOCKING)
-		return
-	update_last_used(user)
+	if(.)
+		update_last_used(user)
+	return .
 
 /obj/machinery/_try_interact(mob/user)
 	if((interaction_flags_machine & INTERACT_MACHINE_WIRES_IF_OPEN) && panel_open && (attempt_wire_interaction(user) == WIRE_INTERACTION_BLOCK))
@@ -818,15 +847,18 @@
 /obj/machinery/handle_deconstruct(disassembled = TRUE)
 	SHOULD_NOT_OVERRIDE(TRUE)
 
-	if(obj_flags & NO_DECONSTRUCTION)
+	if(obj_flags & NO_DEBRIS_AFTER_DECONSTRUCTION)
 		dump_inventory_contents() //drop stuff we consider important
 		return //Just delete us, no need to call anything else.
 
 	on_deconstruction(disassembled)
+
+	if(circuit)
+		spawn_frame(disassembled)
+
 	if(!LAZYLEN(component_parts))
 		dump_contents() //drop everything inside us
 		return //we don't have any parts.
-	spawn_frame(disassembled)
 
 	for(var/part in component_parts)
 		if(istype(part, /datum/stock_part))
@@ -954,9 +986,6 @@
 	if(!istype(replacer_tool))
 		return FALSE
 
-	if(!replacer_tool.works_from_distance)
-		return FALSE
-
 	var/shouldplaysound = FALSE
 	if(!component_parts)
 		return FALSE
@@ -1009,8 +1038,8 @@
 			if(!istype(secondary_part, required_type))
 				continue
 			// If it's a corrupt or rigged cell, attempting to send it through Bluespace could have unforeseen consequences.
-			if(istype(secondary_part, /obj/item/stock_parts/cell) && replacer_tool.works_from_distance)
-				var/obj/item/stock_parts/cell/checked_cell = secondary_part
+			if(istype(secondary_part, /obj/item/stock_parts/power_store/cell) && replacer_tool.works_from_distance)
+				var/obj/item/stock_parts/power_store/cell/checked_cell = secondary_part
 				// If it's rigged or corrupted, max the charge. Then explode it.
 				if(checked_cell.rigged || checked_cell.corrupted)
 					checked_cell.charge = checked_cell.maxcharge
@@ -1123,6 +1152,9 @@
 			if(0 to 25)
 				. += span_warning("It's falling apart!")
 
+/obj/machinery/examine_descriptor(mob/user)
+	return "machine"
+
 /obj/machinery/examine_more(mob/user)
 	. = ..()
 	if(HAS_TRAIT(user, TRAIT_RESEARCH_SCANNER) && component_parts)
@@ -1141,9 +1173,6 @@
 /obj/machinery/proc/on_deconstruction(disassembled)
 	PROTECTED_PROC(TRUE)
 	return
-
-/obj/machinery/proc/can_be_overridden()
-	. = 1
 
 /obj/machinery/zap_act(power, zap_flags)
 	if(prob(85) && (zap_flags & ZAP_MACHINE_EXPLOSIVE) && !(resistance_flags & INDESTRUCTIBLE))

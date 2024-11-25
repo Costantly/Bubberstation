@@ -70,7 +70,7 @@
 		return
 	if(istype(weapon, /obj/item/reagent_containers/hypospray/medipen))
 		var/obj/item/reagent_containers/hypospray/medipen/medipen = weapon
-		if(!(LAZYFIND(allowed_pens, medipen.type)))
+		if(!(LAZYFIND(allowed_pens, medipen.type) || LAZYFIND(moreallowed_pens, medipen.type))) // BUBBER EDIT - Original if(!(LAZYFIND(allowed_pens, medipen.type)))
 			balloon_alert(user, "medipen incompatible!")
 			return
 		if(medipen.reagents?.reagent_list.len)
@@ -91,9 +91,9 @@
 	return ..()
 
 /obj/machinery/medipen_refiller/plunger_act(obj/item/plunger/P, mob/living/user, reinforced)
-	to_chat(user, span_notice("You start furiously plunging [name]."))
+	user.balloon_alert_to_viewers("furiously plunging...", "plunging medipen refiller...")
 	if(do_after(user, 3 SECONDS, target = src))
-		to_chat(user, span_notice("You finish plunging the [name]."))
+		user.balloon_alert_to_viewers("finished plunging")
 		reagents.expose(get_turf(src), TOUCH)
 		reagents.clear_reagents()
 

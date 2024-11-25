@@ -53,9 +53,9 @@
 	addtimer(CALLBACK(src, PROC_REF(finish_loading)), 1 SECONDS)
 	return TRUE
 
-/obj/machinery/rnd/destructive_analyzer/AltClick(mob/user)
-	. = ..()
+/obj/machinery/rnd/destructive_analyzer/click_alt(mob/user)
 	unload_item()
+	return CLICK_ACTION_SUCCESS
 
 /obj/machinery/rnd/destructive_analyzer/update_icon_state()
 	icon_state = "[base_icon_state][loaded_item ? "_l" : null]"
@@ -115,11 +115,11 @@
 				say("Destructive analysis failed!")
 			return TRUE
 
-//Let emags in on a right click
-/obj/machinery/rnd/destructive_analyzer/item_interaction(mob/living/user, obj/item/tool, list/modifiers, is_right_clicking)
-	if(is_right_clicking && istype(tool, /obj/item/card/emag))
-		return NONE
-	return ..()
+/obj/machinery/rnd/destructive_analyzer/item_interaction_secondary(mob/living/user, obj/item/tool, list/modifiers)
+	// Cringe way to let emags insert on RMB because we still use attackby to insert
+	if(istype(tool, /obj/item/card/emag))
+		return ITEM_INTERACT_SKIP_TO_ATTACK
+	return NONE
 
 //This allows people to put syndicate screwdrivers in the machine. Secondary act still passes.
 /obj/machinery/rnd/destructive_analyzer/screwdriver_act(mob/living/user, obj/item/tool)
@@ -139,7 +139,7 @@
 /obj/machinery/rnd/destructive_analyzer/proc/unload_item()
 	if(!loaded_item)
 		return FALSE
-	playsound(loc, 'sound/machines/terminal_insert_disc.ogg', 30, FALSE)
+	playsound(loc, 'sound/machines/terminal/terminal_insert_disc.ogg', 30, FALSE)
 	loaded_item.forceMove(drop_location())
 	loaded_item = null
 	update_appearance(UPDATE_ICON)
